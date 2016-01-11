@@ -260,6 +260,16 @@ public class VcBranch {
 		return environment.read(variables[register]).first();
 	}
 
+	public Type declaredType(int register) {
+		Type type = environment.declaredType(register);
+		if(type != null) {
+			// FIXME: this is a hack.  See #562			
+			return type;
+		} else {
+			return type(register);
+		}
+	}
+	
 	/**
 	 * Check whether or not this register is defined at this point.
 	 * 
@@ -333,7 +343,7 @@ public class VcBranch {
 		variables[register] = environment.havoc(register, type);
 		return (Expr.Variable) read(register);
 	}
-
+	
 	/**
 	 * Assume a given condition holds on this branch.
 	 * 

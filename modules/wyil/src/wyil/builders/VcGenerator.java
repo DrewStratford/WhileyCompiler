@@ -119,7 +119,8 @@ public class VcGenerator {
 		Expr invariant = null;
 		Expr.Variable var = null;
 		if (body != null) {
-			VcEnvironment environment = new VcEnvironment(Math.max(1, body.numSlots()),null);
+			// FIXME: should have variable declarations here!  See #562
+			VcEnvironment environment = new VcEnvironment(Math.max(1, body.numSlots()),null,null);
 			VcBranch master = new VcBranch(environment);
 			var = master.havoc(0, typeDecl.type());		
 			
@@ -186,12 +187,12 @@ public class VcGenerator {
 		// declared types in the master branch. The master branch needs to have
 		// at least as many slots as there are parameters, though may require
 		// more if the body uses them.
-		VcEnvironment environment = new VcEnvironment(Math.max(body.numSlots(), fmm.params().size()), prefixes);
+		VcEnvironment environment = new VcEnvironment(Math.max(body.numSlots(), fmm.params().size()), prefixes, bodyEnvironment);
 		VcBranch master = new VcBranch(environment);
 
 		Expr[] arguments = new Expr[fmm.params().size()];
 		for (int i = 0; i != fmm.params().size(); ++i) {			
-			arguments[i] = master.havoc(i, bodyEnvironment[i]);
+			arguments[i] = master.havoc(i,master.declaredType(i));
 		}
 
 		// Second, assume all preconditions. To do this, we simply invoke the
@@ -1229,7 +1230,7 @@ Codes.Loop code, VcBranch branch,
 				// defined. This is possibly a workaround for a bug, where the
 				// loop modified variables can contain variables local to the
 				// loop.
-				branch.havoc(var, branch.type(var));
+				branch.havoc(var, branch.declaredType(var));
 			}
 		}
 	}
@@ -1982,7 +1983,7 @@ Codes.Loop code, VcBranch branch,
 		int start = wyalFile.declarations().size();
 		
 		// first, generate a branch for traversing the external block.
-		VcEnvironment environment = new VcEnvironment(Math.max(block.numSlots(), types.size()), null);
+		VcEnvironment environment = new VcEnvironment(Math.max(block.numSlots(), types.size()), null, null);
 		VcBranch master = new VcBranch(environment);
 
 		ArrayList<TypePattern.Leaf> declarations = new ArrayList<TypePattern.Leaf>();

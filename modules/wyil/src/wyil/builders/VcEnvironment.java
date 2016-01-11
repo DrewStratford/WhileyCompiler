@@ -49,6 +49,11 @@ public class VcEnvironment {
 	private final String[] prefixes;
 	
 	/**
+	 * A fixed list of the declared type for each register.  
+	 */
+	private final Type[] declaredTypes;
+	
+	/**
 	 * For each variable we maintain the current "version". This is an integer
 	 * value which is used to determine the appropriate SSA number for a given
 	 * variable.
@@ -71,7 +76,7 @@ public class VcEnvironment {
 	 *            --- Variable names to use as prefixes when generating register
 	 *            names. If null, the default names are used instead.
 	 */
-	public VcEnvironment(int numInputs, String[] prefixes) {
+	public VcEnvironment(int numInputs, String[] prefixes, Type[] declaredTypes) {
 		int numSlots = numInputs;
 		this.variables = new HashMap<String,Pair<Type, Expr>>();
 		this.versions = new int[numSlots];
@@ -81,7 +86,8 @@ public class VcEnvironment {
 			this.prefixes = new String[numSlots];
 		} else {
 			this.prefixes = prefixes;	
-		}
+		}		
+		this.declaredTypes = declaredTypes;
 		for (int i = 0; i != numSlots; ++i) {
 			if(this.prefixes[i] == null) {
 				this.prefixes[i] = "r" + i;
@@ -93,9 +99,25 @@ public class VcEnvironment {
 		return versions.length;
 	}
 	
+	public Type declaredType(int register) {
+		if(declaredTypes == null) {
+			// FIXME: this is a hack.  See #562
+			return null;
+		}
+		return declaredTypes[register];
+	}
+	
 	public String write(int register, Type type, Expr expr) {
 		String name = fresh(register);
 		variables.put(name, new Pair<Type, Expr>(type, expr));
+		return name;
+	}
+	
+	public String havoc(int register) {
+		String name = fresh(register);
+		Type type = declaredTypes[register];
+		Expr.Variable var = new Expr.Variable(name);
+		variables.put(name, new Pair<Type, Expr>(type, var));
 		return name;
 	}
 	
