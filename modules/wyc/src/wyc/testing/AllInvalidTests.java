@@ -315,8 +315,8 @@ public class AllInvalidTests {
 	}
 
 	@Test
-	public void ConstrainedTuple_Invalid_1() {
-		runTest("ConstrainedTuple_Invalid_1");
+	public void ConstrainedRecord_Invalid_1() {
+		runTest("ConstrainedRecord_Invalid_1");
 	}
 
 	@Ignore("#425") @Test
@@ -1081,8 +1081,8 @@ public class AllInvalidTests {
 	}
 
 	@Test
-	public void Tuple_Invalid_1() {
-		runTest("Tuple_Invalid_1");
+	public void MultiAssign_Invalid_1() {
+		runTest("MultiAssign_Invalid_1");
 	}
 
 	@Test
