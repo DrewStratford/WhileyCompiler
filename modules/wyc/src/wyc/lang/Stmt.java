@@ -66,8 +66,8 @@ public interface Stmt extends SyntacticElement {
 	 */
 	public static final class Assign extends SyntacticElement.Impl implements
 			Stmt {
-		public Expr.LVal lhs;
-		public Expr rhs;
+		public final List<Expr.LVal> lvals;
+		public Expr expr;
 
 		/**
 		 * Create an assignment from a given <code>lhs</code> and
@@ -79,10 +79,10 @@ public interface Stmt extends SyntacticElement {
 		 *            --- right-hand side, which may not be <code>null</code>.
 		 * @param attributes
 		 */
-		public Assign(Expr.LVal lhs, Expr rhs, Attribute... attributes) {
+		public Assign(List<Expr.LVal> lvals, Expr expr, Attribute... attributes) {
 			super(attributes);
-			this.lhs = lhs;
-			this.rhs = rhs;
+			this.lvals = new ArrayList<Expr.LVal>(lvals);
+			this.expr = expr;
 		}
 
 		/**
@@ -95,10 +95,10 @@ public interface Stmt extends SyntacticElement {
 		 *            --- right-hand side, which may not be <code>null</code>.
 		 * @param attributes
 		 */
-		public Assign(Expr.LVal lhs, Expr rhs, Collection<Attribute> attributes) {
+		public Assign(List<Expr.LVal> lvals, Expr expr, Collection<Attribute> attributes) {
 			super(attributes);
-			this.lhs = lhs;
-			this.rhs = rhs;
+			this.lvals = lvals;
+			this.expr = expr;
 		}
 	}
 

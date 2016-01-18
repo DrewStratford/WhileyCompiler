@@ -520,26 +520,33 @@ public final class CodeGenerator {
 	 *            with error reporting as it determines the enclosing file.
 	 * @return
 	 */
-	private void generate(Assign s, Environment environment,
-			AttributedCodeBlock codes, Context context) {
-
+	private void generate(Assign s, Environment environment, AttributedCodeBlock codes, Context context) {
 		// First, we translate the right-hand side expression and assign it to a
 		// temporary register.
-		int operand = generate(s.rhs, environment, codes, context);
+		int operand = generate(s.expr, environment, codes, context);
 
 		// Second, we update the left-hand side of this assignment
 		// appropriately.
-		if (s.lhs instanceof Expr.AssignedVariable) {
-			Expr.AssignedVariable v = (Expr.AssignedVariable) s.lhs;
+		for (int i = 0; i != s.lvals.size(); ++i) {
+			// FIXME: this doesn't work in the case of "real" multiple values
+			Expr.LVal lval = s.lvals.get(i);
+			generate(lval, operand, s, environment, codes, context);
+		}
+	}
+	
+	public void generate(Expr.LVal lval, int operand, Assign s, Environment environment, AttributedCodeBlock codes,
+			Context context) {
+		if (lval instanceof Expr.AssignedVariable) {
+			Expr.AssignedVariable v = (Expr.AssignedVariable) lval;
 
 			// This is the easiest case. Having translated the right-hand side
 			// expression, we now assign it directly to the register allocated
 			// for variable on the left-hand side.
 			int target = environment.get(v.var);
-			codes.add(Codes.Assign(s.rhs.result().raw(), target, operand),
+			codes.add(Codes.Assign(s.expr.result().raw(), target, operand),
 					attributes(s));
-		} else if (s.lhs instanceof Expr.RationalLVal) {
-			Expr.RationalLVal tg = (Expr.RationalLVal) s.lhs;
+		} else if (lval instanceof Expr.RationalLVal) {
+			Expr.RationalLVal tg = (Expr.RationalLVal) lval;
 
 			// Having translated the right-hand side expression, we now
 			// destructure it using the numerator and denominator unary
@@ -547,17 +554,17 @@ public final class CodeGenerator {
 			Expr.AssignedVariable lv = (Expr.AssignedVariable) tg.numerator;
 			Expr.AssignedVariable rv = (Expr.AssignedVariable) tg.denominator;
 
-			codes.add(Codes.UnaryOperator(s.rhs.result().raw(),
+			codes.add(Codes.UnaryOperator(s.expr.result().raw(),
 					environment.get(lv.var), operand,
 					Codes.UnaryOperatorKind.NUMERATOR), attributes(s));
 
-			codes.add(Codes.UnaryOperator(s.rhs.result().raw(),
+			codes.add(Codes.UnaryOperator(s.expr.result().raw(),
 					environment.get(rv.var), operand,
 					Codes.UnaryOperatorKind.DENOMINATOR), attributes(s));
 
-		} else if (s.lhs instanceof Expr.IndexOf
-				|| s.lhs instanceof Expr.FieldAccess
-				|| s.lhs instanceof Expr.Dereference) {
+		} else if (lval instanceof Expr.IndexOf
+				|| lval instanceof Expr.FieldAccess
+				|| lval instanceof Expr.Dereference) {
 
 			// This is the more complicated case, since the left-hand side
 			// expression is recursive. However, the WyIL update bytecode comes
@@ -567,10 +574,10 @@ public final class CodeGenerator {
 			// updated.
 			ArrayList<String> fields = new ArrayList<String>();
 			ArrayList<Integer> operands = new ArrayList<Integer>();
-			Expr.AssignedVariable lhs = extractLVal(s.lhs, fields, operands,
+			Expr.AssignedVariable lhs = extractLVal(lval, fields, operands,
 					environment, codes, context);
 			int target = environment.get(lhs.var);
-			int rhsRegister = generate(s.rhs, environment, codes, context);
+			int rhsRegister = generate(s.expr, environment, codes, context);
 
 			codes.add(Codes.Update(lhs.type.raw(), target, operands,
 					rhsRegister, lhs.afterType.raw(), fields), attributes(s));

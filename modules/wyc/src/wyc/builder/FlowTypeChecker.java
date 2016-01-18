@@ -263,7 +263,7 @@ public class FlowTypeChecker {
 			WhileyFile.Method m = (WhileyFile.Method) d;
 			m.resolvedType = resolveAsType(m.unresolvedType(), d);
 		}
-
+		
 		// Finally, propagate type information throughout all statements in the
 		// function / method body.
 		Environment last = propagate(d.statements, environment);
@@ -483,28 +483,37 @@ public class FlowTypeChecker {
 	 */
 	private Environment propagate(Stmt.Assign stmt, Environment environment) throws IOException, ResolveError {
 
-		Expr.LVal lhs = propagate(stmt.lhs, environment);
-		Expr rhs = propagate(stmt.rhs, environment, current);
-
-		if (lhs instanceof Expr.RationalLVal) {
-			// represents a destructuring assignment
-			Expr.RationalLVal tv = (Expr.RationalLVal) lhs;
-			Pair<Expr.AssignedVariable, Expr.AssignedVariable> avs = inferAfterType(tv, rhs);
-			String numVar = avs.first().var;
-			String denVar = avs.second().var;
-			checkIsSubtype(environment.getDeclaredType(numVar), avs.first().afterType, avs.first());
-			checkIsSubtype(environment.getDeclaredType(denVar), avs.second().afterType, avs.second());
-			environment = environment.update(numVar, avs.first().afterType);
-			environment = environment.update(denVar, avs.second().afterType);
-		} else {
-			// represents element or field update
-			Expr.AssignedVariable av = inferAfterType(lhs, rhs.result());
-			checkIsSubtype(environment.getDeclaredType(av.var), av.afterType, av);
-			environment = environment.update(av.var, av.afterType);
+		// First, type check each lval
+		for(int i=0;i!=stmt.lvals.size();++i) {
+			Expr.LVal lval = stmt.lvals.get(i);
+			stmt.lvals.set(i, propagate(lval, environment));
 		}
-
-		stmt.lhs = (Expr.LVal) lhs;
-		stmt.rhs = rhs;
+		
+		// Second, type check the right-hand side
+		stmt.expr = propagate(stmt.expr, environment, current);
+		
+		for (int i = 0; i != stmt.lvals.size(); ++i) {
+			
+			// FIXME: need a way to determine the appropriate result type?
+			
+			Expr.LVal lval = stmt.lvals.get(i);
+			if (lval instanceof Expr.RationalLVal) {
+				// represents a destructuring assignment
+				Expr.RationalLVal tv = (Expr.RationalLVal) lval;
+				Pair<Expr.AssignedVariable, Expr.AssignedVariable> avs = inferAfterType(tv, stmt.expr);
+				String numVar = avs.first().var;
+				String denVar = avs.second().var;
+				checkIsSubtype(environment.getDeclaredType(numVar), avs.first().afterType, avs.first());
+				checkIsSubtype(environment.getDeclaredType(denVar), avs.second().afterType, avs.second());
+				environment = environment.update(numVar, avs.first().afterType);
+				environment = environment.update(denVar, avs.second().afterType);
+			} else {
+				// represents element or field update
+				Expr.AssignedVariable av = inferAfterType(lval, stmt.expr.result());
+				checkIsSubtype(environment.getDeclaredType(av.var), av.afterType, av);
+				environment = environment.update(av.var, av.afterType);
+			}
+		}
 
 		return environment;
 	}

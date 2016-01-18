@@ -217,9 +217,14 @@ public class WhileyFilePrinter {
 	}
 
 	public void print(Stmt.Assign s) {
-		print(s.lhs);
+		for(int i=0;i!=s.lvals.size();++i) {
+			if(i!=0) {
+				out.print(", ");
+			}
+			print(s.lvals.get(i));
+		}
 		out.print(" = ");
-		print(s.rhs);
+		print(s.expr);
 		out.println();
 	}
 
