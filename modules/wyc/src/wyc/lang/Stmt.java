@@ -67,38 +67,40 @@ public interface Stmt extends SyntacticElement {
 	public static final class Assign extends SyntacticElement.Impl implements
 			Stmt {
 		public final List<Expr.LVal> lvals;
-		public Expr expr;
+		public final List<Expr> rvals;
 
 		/**
-		 * Create an assignment from a given <code>lhs</code> and
-		 * <code>rhs</code>.
+		 * Create an assignment from a given sequence of lvals and expressions on the right-hand side.
 		 *
-		 * @param lhs
-		 *            --- left-hand side, which may not be <code>null</code>.
-		 * @param rhs
-		 *            --- right-hand side, which may not be <code>null</code>.
+		 * @param lvals
+		 *            Sequence of one or more lval expressions representing the
+		 *            left-hand side
+		 * @param rvals
+		 *            Sequence of one or more expressions representing the
+		 *            right-hand side
 		 * @param attributes
 		 */
-		public Assign(List<Expr.LVal> lvals, Expr expr, Attribute... attributes) {
+		public Assign(List<Expr.LVal> lvals, List<Expr> rvals, Attribute... attributes) {
 			super(attributes);
 			this.lvals = new ArrayList<Expr.LVal>(lvals);
-			this.expr = expr;
+			this.rvals = new ArrayList<Expr>(rvals);
 		}
 
 		/**
-		 * Create an assignment from a given <code>lhs</code> and
-		 * <code>rhs</code>.
+		 * Create an assignment from a given sequence of lvals and expressions on the right-hand side.
 		 *
-		 * @param lhs
-		 *            --- left-hand side, which may not be <code>null</code>.
-		 * @param rhs
-		 *            --- right-hand side, which may not be <code>null</code>.
+		 * @param lvals
+		 *            Sequence of one or more lval expressions representing the
+		 *            left-hand side
+		 * @param rvals
+		 *            Sequence of one or more expressions representing the
+		 *            right-hand side
 		 * @param attributes
 		 */
-		public Assign(List<Expr.LVal> lvals, Expr expr, Collection<Attribute> attributes) {
+		public Assign(List<Expr.LVal> lvals, List<Expr> rvals, Collection<Attribute> attributes) {
 			super(attributes);
-			this.lvals = lvals;
-			this.expr = expr;
+			this.lvals = new ArrayList<Expr.LVal>(lvals);
+			this.rvals = new ArrayList<Expr>(rvals);
 		}
 	}
 

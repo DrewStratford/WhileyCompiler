@@ -783,18 +783,16 @@ public class WhileyFileParser {
 		int start = index;
 
 		match(Return);
-
-		ArrayList<Expr> returns = new ArrayList<Expr>();
-		// A return statement may optionally have a return expression.
-		// Therefore, we first skip all whitespace on the given line.
+		// A return statement may optionally have one or more return
+		// expressions.  Therefore, we first skip all whitespace on the given line.
 		int next = skipLineSpace(index);
 		// Then, we check whether or not we reached the end of the line. If not,
 		// then we assume what's remaining is the returned expression. This
 		// means expressions must start on the same line as a return. Otherwise,
 		// a potentially cryptic error message will be given.
-		returns.add(parseExpression(wf, environment, false));
-		while(tryAndMatch(false,Comma) != null) {
-			returns.add(parseExpression(wf, environment, false));
+		List<Expr> returns = Collections.EMPTY_LIST;
+		if (next < tokens.size() && tokens.get(next).kind != NewLine) {
+			returns = parseExpressions(wf,environment,false); 
 		}
 		// Finally, at this point we are expecting a new-line to signal the
 		// end-of-statement.
@@ -1292,12 +1290,12 @@ public class WhileyFileParser {
 	private Stmt parseAssignmentStatement(WhileyFile wf,
 			HashSet<String> environment) {
 		int start = index;
-		List<Expr.LVal> lhs = parseLVals(wf, environment);
+		List<Expr.LVal> lvals = parseLVals(wf, environment);
 		match(Equals);
-		Expr rhs = parseExpression(wf, environment, false);
+		List<Expr> rvals = parseExpressions(wf, environment, false);
 		int end = index;
 		matchEndLine();
-		return new Stmt.Assign(lhs, rhs, sourceAttr(start, end - 1));
+		return new Stmt.Assign(lvals, rvals, sourceAttr(start, end - 1));
 	}
 
 	/**
@@ -1336,38 +1334,7 @@ public class WhileyFileParser {
 	}
 	
 	private Expr.LVal parseLVal(WhileyFile wf, HashSet<String> environment) {
-		return parseRationalLVal(wf, environment);
-	}
-
-	/**
-	 * Parse a rational lval, which is of the form:
-	 *
-	 * <pre>
-	 * RationalLVal ::= TermLVal [ '/' TermLVal ]
-	 * </pre>
-	 *
-	 * @param wf
-	 *            The enclosing WhileyFile being constructed. This is necessary
-	 *            to construct some nested declarations (e.g. parameters for
-	 *            lambdas)
-	 * @param environment
-	 *            The set of declared variables visible in the enclosing scope.
-	 *            This is necessary to identify local variables within this
-	 *            expression.
-	 *
-	 * @return
-	 */
-	private Expr.LVal parseRationalLVal(WhileyFile wf,
-			HashSet<String> environment) {
-		int start = index;
-		Expr.LVal lhs = parseAccessLVal(wf, environment);
-
-		if (tryAndMatch(true, RightSlash) != null) {
-			Expr.LVal rhs = parseAccessLVal(wf, environment);
-			return new Expr.RationalLVal(lhs, rhs, sourceAttr(start, index - 1));
-		}
-
-		return lhs;
+		return parseAccessLVal(wf, environment);
 	}
 
 	/**
@@ -1465,6 +1432,32 @@ public class WhileyFileParser {
 			syntaxError("unrecognised lval", lookahead);
 			return null; // dead-code
 		}
+	}
+	
+	/**
+	 * Parse a "multi-expression"; that is, a sequence of one or more
+	 * expressions separated by comma's
+	 * 
+	 * @param wf
+	 * @param environment
+	 * @param terminated
+	 * @return
+	 */
+	public List<Expr> parseExpressions(WhileyFile wf,
+			HashSet<String> environment, boolean terminated) {
+		ArrayList<Expr> returns = new ArrayList<Expr>();
+		// A return statement may optionally have a return expression.
+		// Therefore, we first skip all whitespace on the given line.
+		int next = skipLineSpace(index);
+		// Then, we check whether or not we reached the end of the line. If not,
+		// then we assume what's remaining is the returned expression. This
+		// means expressions must start on the same line as a return. Otherwise,
+		// a potentially cryptic error message will be given.
+		returns.add(parseExpression(wf, environment, terminated));
+		while(tryAndMatch(false,Comma) != null) {
+			returns.add(parseExpression(wf, environment, terminated));
+		}
+		return returns;
 	}
 	
 	/**

@@ -726,21 +726,6 @@ public interface Expr extends SyntacticElement {
 		}
 	}
 
-	public static class RationalLVal extends SyntacticElement.Impl implements LVal {
-		public LVal numerator;
-		public LVal denominator;
-
-		public RationalLVal(LVal num, LVal den, Attribute... attributes) {
-			super(attributes);
-			this.numerator = num;
-			this.denominator = den;
-		}
-
-		public final Nominal result() {
-			return null; // better be dead-code
-		}
-	}
-	
 	public enum BOp {
 		AND {
 			public String toString() { return "&&"; }

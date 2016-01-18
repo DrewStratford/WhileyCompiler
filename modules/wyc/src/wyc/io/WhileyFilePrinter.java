@@ -224,7 +224,12 @@ public class WhileyFilePrinter {
 			print(s.lvals.get(i));
 		}
 		out.print(" = ");
-		print(s.expr);
+		for(int i=0;i!=s.rvals.size();++i) {
+			if(i!=0) {
+				out.print(", ");
+			}
+			print(s.rvals.get(i));
+		}
 		out.println();
 	}
 
@@ -364,8 +369,6 @@ public class WhileyFilePrinter {
 			print ((Expr.New) expression);
 		} else if (expression instanceof Expr.TypeVal) {
 			print ((Expr.TypeVal) expression);
-		} else if (expression instanceof Expr.RationalLVal) {
-			print ((Expr.RationalLVal) expression);
 		} else {
 			// should be dead-code
 			throw new RuntimeException("Unknown expression kind encountered: " + expression.getClass().getName());
@@ -594,12 +597,6 @@ public class WhileyFilePrinter {
 
 	public void print(Expr.TypeVal e) {
 		print(e.unresolvedType);
-	}
-
-	public void print(Expr.RationalLVal e) {
-		print(e.numerator);
-		out.print(" / ");
-		print(e.denominator);
 	}
 
 	private void printParameters(List<WhileyFile.Parameter> parameters) {
