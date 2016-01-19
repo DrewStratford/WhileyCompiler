@@ -400,11 +400,8 @@ public final class CodeGenerator {
 				generate((While) stmt, environment, codes, context);
 			} else if (stmt instanceof DoWhile) {
 				generate((DoWhile) stmt, environment, codes, context);
-			} else if (stmt instanceof Expr.MethodCall) {
-				generate((Expr.MethodCall) stmt, Codes.NULL_REG, environment,
-						codes, context);
-			} else if (stmt instanceof Expr.FunctionCall) {
-				generate((Expr.FunctionCall) stmt, Codes.NULL_REG, environment,
+			} else if (stmt instanceof Expr.FunctionOrMethodCall) {
+				generate((Expr.FunctionOrMethodCall) stmt, environment,
 						codes, context);
 			} else if (stmt instanceof Expr.IndirectMethodCall) {
 				generate((Expr.IndirectMethodCall) stmt, Codes.NULL_REG,
@@ -526,9 +523,21 @@ public final class CodeGenerator {
 		ArrayList<Integer> operands = new ArrayList<Integer>();
 		ArrayList<Type> types = new ArrayList<Type>();
 		for(int i=0;i!=s.rvals.size();++i) {
-			// FIXME: handle rvals which generated multiple values.
-			operands.add(generate(s.rvals.get(i), environment, codes, context));
-			types.add(s.rvals.get(i).result().raw());
+			Expr e = s.rvals.get(i);
+			if(e instanceof Expr.Multi) {
+				// The assigned expression actually has multiple returns,
+				// therefore extract them all.
+				Expr.Multi me = (Expr.Multi) e;
+				for(Nominal t : me.returns()) {
+					types.add(t.raw());
+				}				
+				operands.addAll(toIntegerList(generate(me, environment, codes, context)));
+			} else {
+				// The assigned rval is a simple expression which returns a
+				// single value
+				operands.add(generate(e, environment, codes, context));
+				types.add(e.result().raw());
+			}			
 		}
 		
 		// Second, update each expression on left-hand side of this assignment
@@ -1596,6 +1605,47 @@ public final class CodeGenerator {
 	}
 
 	// =========================================================================
+	// Multi-Expressions
+	// =========================================================================
+
+	
+	public int[] generate(Expr.Multi expression, Environment environment,
+			AttributedCodeBlock codes, Context context) {
+		List<Nominal> returns = expression.returns();
+		int[] targets = new int[returns.size()];
+		for(int i=0;i!=targets.length;++i) {
+			targets[i] = environment.allocate(returns.get(i).raw());
+		}
+		try {
+			if(expression instanceof Expr.FunctionOrMethodCall) {
+				Expr.FunctionOrMethodCall fmc = (Expr.FunctionOrMethodCall) expression;  
+				generate(fmc,environment,codes,context,targets);
+			} else {
+				// should be dead-code
+				internalFailure("unknown expression: "
+						+ expression.getClass().getName(), context, expression);
+			}
+		} catch (ResolveError rex) {
+			syntaxError(rex.getMessage(), context, expression, rex);
+		} catch (SyntaxError se) {
+			throw se;
+		} catch (Exception ex) {
+			internalFailure(ex.getMessage(), context, expression, ex);
+		}
+		// done
+		return targets;
+	}
+	
+	public void generate(Expr.FunctionOrMethodCall expr,
+			Environment environment, AttributedCodeBlock codes, Context context, int... targets)
+			throws ResolveError {
+		int[] operands = generate(expr.arguments, environment, codes, context);
+		codes.add(
+				Codes.Invoke(expr.type().nominal(), targets, operands,
+						expr.nid()), attributes(expr));
+	}
+	
+	// =========================================================================
 	// Expressions
 	// =========================================================================
 
@@ -1650,11 +1700,8 @@ public final class CodeGenerator {
 			} else if (expression instanceof Expr.UnOp) {
 				return generate((Expr.UnOp) expression, environment, codes,
 						context);
-			} else if (expression instanceof Expr.FunctionCall) {
-				return generate((Expr.FunctionCall) expression, environment,
-						codes, context);
-			} else if (expression instanceof Expr.MethodCall) {
-				return generate((Expr.MethodCall) expression, environment,
+			} else if (expression instanceof Expr.FunctionOrMethodCall) {
+				return generate((Expr.FunctionOrMethodCall) expression, environment,
 						codes, context);
 			} else if (expression instanceof Expr.IndirectFunctionCall) {
 				return generate((Expr.IndirectFunctionCall) expression,
@@ -1696,35 +1743,11 @@ public final class CodeGenerator {
 		return -1; // deadcode
 	}
 
-	public int generate(Expr.MethodCall expr, Environment environment,
+	public int generate(Expr.FunctionOrMethodCall expr, Environment environment,
 			AttributedCodeBlock codes, Context context) throws ResolveError {
 		int target = environment.allocate(expr.result().raw());
-		generate(expr, target, environment, codes, context);
+		generate(expr, environment, codes, context, target);
 		return target;
-	}
-
-	public void generate(Expr.MethodCall expr, int target,
-			Environment environment, AttributedCodeBlock codes, Context context)
-			throws ResolveError {
-		int[] operands = generate(expr.arguments, environment, codes, context);
-		codes.add(
-				Codes.Invoke(expr.methodType.nominal(), target, operands,
-						expr.nid()), attributes(expr));
-	}
-
-	public int generate(Expr.FunctionCall expr, Environment environment,
-			AttributedCodeBlock codes, Context context) throws ResolveError {
-		int target = environment.allocate(expr.result().raw());
-		generate(expr, target, environment, codes, context);
-		return target;
-	}
-
-	public void generate(Expr.FunctionCall expr, int target,
-			Environment environment, AttributedCodeBlock codes, Context context)
-			throws ResolveError {
-		int[] operands = generate(expr.arguments, environment, codes, context);
-		codes.add(Codes.Invoke(expr.functionType.nominal(), target, operands,
-				expr.nid()), attributes(expr));
 	}
 
 	public int generate(Expr.IndirectFunctionCall expr,
@@ -2237,6 +2260,14 @@ public final class CodeGenerator {
 			attrs.add(new wyil.attributes.SourceLocation(0, s.start, s.end));
 		}
 		return attrs;
+	}
+	
+	public List<Integer> toIntegerList(int...items) {
+		ArrayList<Integer> list = new ArrayList<Integer>();
+		for(int i=0;i!=items.length;++i) {
+			list.add(items[i]);
+		}
+		return list;
 	}
 
 	/**

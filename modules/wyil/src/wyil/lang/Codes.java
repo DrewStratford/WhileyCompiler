@@ -172,14 +172,14 @@ public abstract class Codes {
 		return new Goto(label);
 	}
 
-	public static Invoke Invoke(Type.FunctionOrMethod fun, int target,
-			Collection<Integer> operands, NameID name) {
-		return new Invoke(fun, target, CodeUtils.toIntArray(operands), name);
+	public static Invoke Invoke(Type.FunctionOrMethod fun, Collection<Integer> targets, Collection<Integer> operands,
+			NameID name) {
+		return new Invoke(fun, CodeUtils.toIntArray(targets), CodeUtils.toIntArray(operands), name);
 	}
 
-	public static Invoke Invoke(Type.FunctionOrMethod fun, int target,
+	public static Invoke Invoke(Type.FunctionOrMethod fun, int[] targets,
 			int[] operands, NameID name) {
-		return new Invoke(fun, target, operands, name);
+		return new Invoke(fun, targets, operands, name);
 	}
 	
 	/**
@@ -692,12 +692,12 @@ public abstract class Codes {
 
 		@Override
 		public void registers(java.util.Set<Integer> registers) {
-			registers.add(target());
+			registers.add(targets()[0]);
 		}
 
 		@Override
 		public Code.Unit remap(Map<Integer, Integer> binding) {
-			Integer nTarget = binding.get(target());
+			Integer nTarget = binding.get(targets()[0]);
 			if (nTarget != null) {
 				return Const(nTarget, constant);
 			}
@@ -707,21 +707,25 @@ public abstract class Codes {
 		public Type assignedType() {
 			return (Type) constant.type();
 		}
+		
+		public int target() {
+			return targets()[0];
+		}
 
 		public int hashCode() {
-			return constant.hashCode() + target();
+			return constant.hashCode() + targets()[0];
 		}
 
 		public boolean equals(Object o) {
 			if (o instanceof Const) {
 				Const c = (Const) o;
-				return constant.equals(c.constant) && target() == c.target();
+				return constant.equals(c.constant) && Arrays.equals(targets(),c.targets());
 			}
 			return false;
 		}
 
 		public String toString() {
-			return "const %" + target() + " = " + constant + " : "
+			return "const %" + targets()[0] + " = " + constant + " : "
 					+ constant.type();
 		}
 	}
@@ -947,6 +951,11 @@ public abstract class Codes {
 			return OPCODE_fail;
 		}
 
+		@Override
+		public Code.Unit remap(Map<Integer, Integer> binding) {
+			return this;
+		}
+		
 		public String toString() {
 			return "fail";			
 		}
@@ -1087,6 +1096,11 @@ public abstract class Codes {
 				return Goto(nlabel);
 			}
 		}
+		
+		@Override
+		public Code.Unit remap(Map<Integer, Integer> binding) {
+			return this;
+		}
 
 		public int hashCode() {
 			return target.hashCode();
@@ -1101,7 +1115,7 @@ public abstract class Codes {
 
 		public String toString() {
 			return "goto " + target;
-		}
+		}		
 	}
 
 	/**
@@ -1597,12 +1611,12 @@ public abstract class Codes {
 	 *
 	 */
 	public static final class Invoke extends
-			AbstractNaryAssignable<Type.FunctionOrMethod> {
+			AbstractMultiNaryAssignable<Type.FunctionOrMethod> {
 		public final NameID name;
 
-		private Invoke(Type.FunctionOrMethod type, int target, int[] operands,
+		private Invoke(Type.FunctionOrMethod type, int[] targets, int[] operands,
 				NameID name) {
-			super(type, target, operands);
+			super(type, targets, operands);
 			this.name = name;
 		}
 
@@ -1631,8 +1645,8 @@ public abstract class Codes {
 		}
 
 		@Override
-		public Code.Unit clone(int nTarget, int[] nOperands) {
-			return Invoke(type(), nTarget, nOperands, name);
+		public Code.Unit clone(int[] nTargets, int[] nOperands) {
+			return Invoke(type(), nTargets, nOperands, name);
 		}
 
 		public boolean equals(Object o) {
@@ -1644,13 +1658,8 @@ public abstract class Codes {
 		}
 
 		public String toString() {
-			if (target() != Codes.NULL_REG) {
-				return "invoke %" + target() + " = " + arrayToString(operands())
-						+ " " + name + " : " + type();
-			} else {
-				return "invoke %" + arrayToString(operands()) + " " + name
-						+ " : " + type();
-			}
+			return "invoke " + arrayToString(targets()) + " = " + arrayToString(operands()) + " " + name + " : "
+					+ type();			
 		}
 	}
 
@@ -1725,6 +1734,11 @@ public abstract class Codes {
 			}
 		}
 
+		@Override
+		public Code.Unit remap(Map<Integer, Integer> binding) {
+			return this;
+		}
+		
 		public int hashCode() {
 			return label.hashCode();
 		}
@@ -2576,6 +2590,11 @@ public abstract class Codes {
 			return OPCODE_nop;
 		}
 
+		@Override
+		public Code.Unit remap(Map<Integer, Integer> binding) {
+			return this;
+		}
+		
 		public String toString() {
 			return "nop";
 		}

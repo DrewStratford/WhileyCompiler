@@ -494,8 +494,16 @@ public class FlowTypeChecker {
 		ArrayList<Nominal> valuesProduced = new ArrayList<Nominal>();
 		for (int i = 0; i != stmt.rvals.size(); ++i) {
 			Expr e = propagate(stmt.rvals.get(i), environment, current);
-			// FIXME: update for expressions which can provide multiple rvals
-			valuesProduced.add(e.result());
+			if(e instanceof Expr.Multi) {
+				// The assigned expression actually has multiple returns,
+				// therefore extract them all.
+				Expr.Multi me = (Expr.Multi) e;
+				valuesProduced.addAll(me.returns());
+			} else {
+				// The assigned rval is a simple expression which returns a
+				// single value
+				valuesProduced.add(e.result());
+			}
 			stmt.rvals.set(i, e);
 		}
 		// Check the number of expected values matches the number of values
